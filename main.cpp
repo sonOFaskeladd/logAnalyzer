@@ -4,14 +4,12 @@
 #include<optional>
 #include<cctype>
 #include<unordered_map>
-
 struct LogRecord{
     std::string method;
     std::string path;
     int statusCode;
     std::size_t bytes;
 };
-
 std::optional<LogRecord>logParser(const std::string& line){
     LogRecord record;
     //Method 
@@ -66,7 +64,6 @@ std::optional<LogRecord>logParser(const std::string& line){
 
     return record;
 }
-
 int main(int argc , char* argv[]){
     if(argc < 2){
         std::cerr << "Error: Missing File Argument  \n";
@@ -85,7 +82,9 @@ int main(int argc , char* argv[]){
     std::size_t totalLines = 0;
     std::size_t validRequests = 0;
     std::size_t malinformedRequests = 0;
-
+    std::unordered_map<std::string, std::size_t> RequestByHTTP;
+    std::unordered_map<std::string, std::size_t> RequestByEndpoint;
+    std::unordered_map<std::string, std::size_t> StatusCodeCategory;
     std::unordered_map<int, std::size_t>statusCodes;
     while(std::getline(file,line)){
         totalLines++;
@@ -93,25 +92,41 @@ int main(int argc , char* argv[]){
 
         if(result.has_value()){
             validRequests++;
-            statusCodes[result.value().statusCode]++;
+            int statusCode = result.value().statusCode;
+            statusCodes[statusCode]++;
             std::cout<<"Method "<<result.value().method<<"\n";
+            RequestByHTTP[result.value().method]++;
             std::cout<<"Path "<<result.value().path<<"\n";
+            RequestByEndpoint[result.value().path]++;
             std::cout<<"Status Code "<<result.value().statusCode<<"\n";
             std::cout<<"Bytes "<<result.value().bytes<<"\n";
+
+            if(statusCode >= 200 && statusCode < 300) StatusCodeCategory["2xx"]++;
+            else if(statusCode >= 300 && statusCode < 400) StatusCodeCategory["3xx"]++;
+            else if(statusCode >= 400 && statusCode < 500) StatusCodeCategory["4xx"]++;
+            else StatusCodeCategory["5xx"]++;
+            
         }else{
             malinformedRequests++;
         }
     }
 
-    std::cout<<"Total Lines : "<<totalLines<<'\n';
-    std::cout<<"Valid Requests : "<<validRequests<<'\n';
-    std::cout<<"Malinformed Requests : "<<malinformedRequests<<'\n';
-
-
-    std::cout << "\nStatus Codes\n";
-
-    for(const auto& [status,count]:statusCodes){
-        std::cout<<status<<":"<<count<<"\n";
+    std::cout<<"==========LOG ANALYSIS=========="<<"\n\n";
+    std::cout<<"REQUESTS \n";
+    std::cout<<"Total : "<<totalLines<<"\n";
+    std::cout<<"Valid : "<<validRequests<<"\n";
+    std::cout<<"Malinformed : "<<malinformedRequests<<"\n\n";
+    std::cout<<"METHODS \n";
+    for(const auto&[methods , count ]:RequestByHTTP){
+        std::cout<<methods<<" : "<<count<<"\n";
+    }
+    std::cout<<"STATUS \n";
+    for(const auto&[status , count ]:StatusCodeCategory){
+        std::cout<<status<<" : "<<count<<"\n";
+    }
+    std::cout<<"TOTAL ENDPOINTS \n";
+    for(const auto&[path , count ]:RequestByEndpoint){
+        std::cout<<path<<" : "<<count<<"\n";
     }
 
     return 0;
