@@ -4,6 +4,7 @@
 #include<optional>
 #include<cctype>
 #include<unordered_map>
+#include<algorithm>
 struct LogRecord{
     std::string method;
     std::string path;
@@ -86,6 +87,9 @@ int main(int argc , char* argv[]){
     std::unordered_map<std::string, std::size_t> RequestByEndpoint;
     std::unordered_map<std::string, std::size_t> StatusCodeCategory;
     std::unordered_map<int, std::size_t>statusCodes;
+    std::size_t totalBytes = 0;
+    std::size_t minBytes = INT_MAX;
+    std::size_t maxBytes = 0;
     while(std::getline(file,line)){
         totalLines++;
         std::optional<LogRecord> result = logParser(line);
@@ -94,25 +98,34 @@ int main(int argc , char* argv[]){
             validRequests++;
             int statusCode = result.value().statusCode;
             statusCodes[statusCode]++;
-            std::cout<<"Method "<<result.value().method<<"\n";
             RequestByHTTP[result.value().method]++;
-            std::cout<<"Path "<<result.value().path<<"\n";
             RequestByEndpoint[result.value().path]++;
-            std::cout<<"Status Code "<<result.value().statusCode<<"\n";
-            std::cout<<"Bytes "<<result.value().bytes<<"\n";
+            std::size_t currentByte = result.value().bytes;
+            totalBytes += currentByte;
 
             if(statusCode >= 200 && statusCode < 300) StatusCodeCategory["2xx"]++;
             else if(statusCode >= 300 && statusCode < 400) StatusCodeCategory["3xx"]++;
             else if(statusCode >= 400 && statusCode < 500) StatusCodeCategory["4xx"]++;
             else StatusCodeCategory["5xx"]++;
             
+            //Calculate Max and Minimum Byte
+            if(maxBytes < currentByte) maxBytes=currentByte;
+            if(minBytes > currentByte) minBytes=currentByte;
         }else{
             malinformedRequests++;
         }
     }
 
-    std::cout<<"==========LOG ANALYSIS=========="<<"\n\n";
-    std::cout<<"REQUESTS \n";
+    std::vector<std::pair<std::string,int>> vec(RequestByEndpoint.begin(),RequestByEndpoint.end());
+
+    std::sort(vec.begin(),vec.end(),[](const auto& a, const auto& b){
+        return a.second > b.second;
+    });
+
+    double errorRate = (double)((StatusCodeCategory["4xx"] + StatusCodeCategory["5xx"])/(double)validRequests)*100;
+
+    std::cout<<"\n\n==========LOG ANALYSIS=========="<<"\n\n";
+    std::cout<<"REQUESTS \n\n";
     std::cout<<"Total : "<<totalLines<<"\n";
     std::cout<<"Valid : "<<validRequests<<"\n";
     std::cout<<"Malinformed : "<<malinformedRequests<<"\n\n";
@@ -120,14 +133,27 @@ int main(int argc , char* argv[]){
     for(const auto&[methods , count ]:RequestByHTTP){
         std::cout<<methods<<" : "<<count<<"\n";
     }
-    std::cout<<"STATUS \n";
+    std::cout<<"\nSTATUS \n";
     for(const auto&[status , count ]:StatusCodeCategory){
         std::cout<<status<<" : "<<count<<"\n";
     }
-    std::cout<<"TOTAL ENDPOINTS \n";
+    std::cout<<"\nTOTAL ENDPOINTS \n";
     for(const auto&[path , count ]:RequestByEndpoint){
         std::cout<<path<<" : "<<count<<"\n";
     }
-
+    std::cout<<"\nTOTAL BYTES : "<<totalBytes<<"\n";
+    //Average Response Size 
+    std::size_t averageBytes = totalBytes/validRequests;
+    std::cout<<"\nAVERAGE RESPONSE SIZE : "<<averageBytes<<"\n";
+    std::cout<<"\nMIN BYTES : "<<minBytes<<"\n";
+    std::cout<<"\nMAX BYTES : "<<maxBytes<<"\n\n";
+    std::cout<<"\nTOP 5 ENDPOINTS"<<"\n";
+    int count = 0;
+    for(const auto& pair : vec){
+        if(count == 5) break;
+        std::cout<<pair.first<<" : "<<pair.second<<"\n";
+        count++;
+    }
+    std::cout<<"\nERROR RATE : "<<errorRate<<"%\n";
     return 0;
 }
