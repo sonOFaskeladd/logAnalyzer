@@ -5,4 +5,8 @@ project(logAnalyzer)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(logAnalyzer main.cpp)
+add_executable(logAnalyzer 
+main.cpp
+LogAnalyzer.cpp
+LogParser.cpp
+)
