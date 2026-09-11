@@ -19,7 +19,6 @@ int main(int argc , char* argv[]){
         std::cerr<<"Error: Could not open the file\n";
         return 1;
     }
-
     LogAnalyzer analyzer;
     std::string line;
 
